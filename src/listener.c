@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 #define READ_BUFFER_SIZE 4096
@@ -29,6 +30,11 @@ bool listener_start(void)
 
     struct sockaddr_in address;
     socklen_t address_length;
+    int reuse = 1;
+    struct timeval tv = {
+    	.tv_sec = 1,
+	.tv_usec = 0
+    };
 
     server_fd = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -38,10 +44,9 @@ bool listener_start(void)
         return false;
     }
 
+    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) != 0)
     {
-        int yes = 1;
-
-        setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+    	log_warning("setsockopt(SO_REUSEADDR): %s", strerror(errno));
     }
 
     memset(&address, 0, sizeof(address));
@@ -86,6 +91,10 @@ bool listener_start(void)
             log_warning("accept(): %s", strerror(errno));
             continue;
         }
+	if (setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) != 0)
+	{
+		log_warning("setsockopt(SO_RCVTIMEO): %s", strerror(errno));
+	}
 
         handle_client(client_fd);
 

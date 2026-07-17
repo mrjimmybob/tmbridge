@@ -101,7 +101,7 @@ bool http_post(const char *url, const char *content_type, const void *body, size
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body);
     curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (curl_off_t)body_length);
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, config_get_timeout());
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, config_get_http_timeout());
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, response);
     curl_easy_setopt(curl, CURLOPT_USERAGENT, "tmbridge/0.1");

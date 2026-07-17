@@ -23,7 +23,8 @@ typedef struct
     uint16_t printer_port;
     char device[64];
     bool verify_tls;
-    int timeout;
+    int http_timeout;
+    int epos_timeout;
     bool debug_xml;
 
 } config_t;
@@ -64,7 +65,8 @@ static void config_defaults(void)
     g_config.printer_port = 443;
     snprintf(g_config.device, sizeof(g_config.device), "%s", "local_printer");
     g_config.verify_tls = false;
-    g_config.timeout = 20;
+    g_config.http_timeout = 20;
+    g_config.epos_timeout = 10000;
     g_config.debug_xml = false;
 }
 
@@ -90,11 +92,18 @@ static bool config_validate(void)
         return false;
     }
 
-    if (g_config.timeout <= 0)
+    if (g_config.http_timeout <= 0)
     {
-        log_error("Configuration error: invalid timeout.");
+        log_error("Configuration error: invalid http timeout.");
         return false;
     }
+    
+    if (g_config.epos_timeout <= 0)
+    {
+        log_error("Configuration error: invalid epos timeout.");
+        return false;
+    }
+
 
     return true;
 }
@@ -164,9 +173,13 @@ bool config_load(const char *filename)
         {
             g_config.verify_tls = (strtoul(value, NULL, 10) != 0);
         }
-        else if (strcmp(key, "timeout") == 0)
+        else if (strcmp(key, "http_timeout") == 0)
         {
-            g_config.timeout = (int)strtol(value, NULL, 10);
+            g_config.http_timeout = (int)strtol(value, NULL, 10);
+        }
+        else if (strcmp(key, "epos_timeout") == 0)
+        {
+            g_config.epos_timeout = (int)strtol(value, NULL, 10);
         }
 	else if (strcmp(key, "debug_xml") == 0)
 	{
@@ -227,9 +240,16 @@ bool config_get_verify_tls(void)
 
 /*****************************************************************************/
 
-int config_get_timeout(void)
+int config_get_http_timeout(void)
 {
-    return g_config.timeout;
+    return g_config.http_timeout;
+}
+
+/*****************************************************************************/
+
+int config_get_epos_timeout(void)
+{
+    return g_config.epos_timeout;
 }
 
 /*****************************************************************************/

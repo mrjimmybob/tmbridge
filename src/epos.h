@@ -3,6 +3,8 @@
 
 #include <stdbool.h>
 
-bool epos_print(const char *text);
+#include "buffer.h"
+
+bool epos_print(const buffer_t *xml);
 
 #endif

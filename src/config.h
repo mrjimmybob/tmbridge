@@ -15,7 +15,8 @@ uint16_t    config_get_printer_port(void);
 const char *config_get_device(void);
 
 bool        config_get_verify_tls(void);
-int         config_get_timeout(void);
+int         config_get_http_timeout(void);
+int         config_get_epos_timeout(void);
 bool        config_get_debug_xml(void);
 
 #endif

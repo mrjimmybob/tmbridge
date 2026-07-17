@@ -23,12 +23,15 @@ int main(void)
 {
     log_info("%s %s", TMBRIDGE_NAME, TMBRIDGE_VERSION);
 
-    if (!config_load("tmbridge.conf"))
+    if (!config_load("tmbridge.conf")) 
+    {
         return EXIT_FAILURE;
+    }
 
-    if (!http_init())
+    if (!http_init()) {
         return EXIT_FAILURE;
-
+    }
+    
     if (!listener_start())
     {
         http_cleanup();

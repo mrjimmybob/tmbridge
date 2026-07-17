@@ -17,178 +17,106 @@
 
 /*****************************************************************************/
 
-static bool xml_escape(buffer_t *xml,
-                       const char *text)
+bool epos_print(const buffer_t *xml)
 {
-    while (*text != '\0')
-    {
-        switch (*text)
-        {
-            case '&':
-                if (!buffer_append_string(xml, "&amp;"))
-                    return false;
-                break;
-
-            case '<':
-                if (!buffer_append_string(xml, "&lt;"))
-                    return false;
-                break;
-
-            case '>':
-                if (!buffer_append_string(xml, "&gt;"))
-                    return false;
-                break;
-
-            case '\'':
-                if (!buffer_append_string(xml, "&apos;"))
-                    return false;
-                break;
-
-            case '"':
-                if (!buffer_append_string(xml, "&quot;"))
-                    return false;
-                break;
-
-            default:
-                if (!buffer_append_char(xml, *text))
-                    return false;
-                break;
-        }
-
-        text++;
-    }
-
-    return true;
-}
-
-/*****************************************************************************/
-
-bool epos_print(const char *text)
-{
-    buffer_t xml;
+    buffer_t soap;
     buffer_t response;
+
     char url[512];
     bool ok;
 
-    if (!buffer_init(&xml))
-    {
-        log_error("Unable to allocate XML buffer");
+    if (!buffer_init(&soap))
         return false;
-    }
 
     if (!buffer_init(&response))
     {
-        buffer_free(&xml);
-        log_error("Unable to allocate response buffer");
+        buffer_free(&soap);
         return false;
     }
 
-    snprintf(url,
-             sizeof(url),
-             "https://%s:%u/cgi-bin/epos/service.cgi?"
-             "devid=%s&timeout=%d",
-             config_get_printer_host(),
-             config_get_printer_port(),
-             config_get_device(),
-             config_get_timeout() * 1000);
+    snprintf(
+        url,
+        sizeof(url),
+        "https://%s:%d/cgi-bin/epos/service.cgi?devid=%s&timeout=%d",
+        config_get_printer_host(),
+        config_get_printer_port(),
+        config_get_device(),
+        config_get_epos_timeout());
 
-    log_debug("URL: %s", url);
-
-    if (!buffer_append_string(&xml, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>")) {
-	buffer_free(&response);
-	buffer_free(&xml);
-	return false;
-    }
-    if (!buffer_append_string(&xml, "<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\">")) {
-	buffer_free(&response);
-	buffer_free(&xml);
-	return false;
-    }
-    if (!buffer_append_string(&xml, "<s:Body>")) {
-	buffer_free(&response);
-	buffer_free(&xml);
-	return false;
+    if (!buffer_append_string(&soap, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"))
+    {
+        buffer_free(&response);
+        buffer_free(&soap);
+        return false;
     }
 
-    if (!buffer_append_string(&xml, "<epos-print xmlns=\"http://www.epson-pos.com/schemas/2011/03/epos-print\">"))
+    if (!buffer_append_string(&soap, "<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\">"))
     {
-	buffer_free(&response);
-	buffer_free(&xml);
-	return false;
+        buffer_free(&response);
+        buffer_free(&soap);
+        return false;
     }
 
-    if (!buffer_append_string(&xml, "<text lang=\"en\" smooth=\"true\">"))
+    if (!buffer_append_string(
+            &soap,
+            "<s:Body>"))
     {
-	buffer_free(&response);
-	buffer_free(&xml);
-	return false;
+        buffer_free(&response);
+        buffer_free(&soap);
+        return false;
     }
 
-    if (!xml_escape(&xml, text))
+    if (!buffer_append_string(&soap, "<epos-print xmlns=\"http://www.epson-pos.com/schemas/2011/03/epos-print\">"))
     {
-	buffer_free(&response);
-	buffer_free(&xml);
-	return false;
+        buffer_free(&response);
+        buffer_free(&soap);
+        return false;
     }
 
-    if (!buffer_append_string(&xml, "</text>"))
+    if (!buffer_append(&soap, buffer_data(xml), buffer_length(xml)))
     {
-	buffer_free(&response);
-	buffer_free(&xml);
-	return false;
+        buffer_free(&response);
+        buffer_free(&soap);
+        return false;
     }
 
-    if (!buffer_append_string(&xml, "<cut type=\"feed\"/>"))
+    if (!buffer_append_string(&soap, "</epos-print>"))
     {
-	buffer_free(&response);
-	buffer_free(&xml);
-	return false;
+        buffer_free(&response);
+        buffer_free(&soap);
+        return false;
     }
 
-    if (!buffer_append_string(&xml, "</epos-print>"))
+    if (!buffer_append_string(&soap, "</s:Body>"))
     {
-	buffer_free(&response);
-	buffer_free(&xml);
-	return false;
-    }
-    if (!buffer_append_string(&xml, "</s:Body>"))
-    {
-	buffer_free(&response);
-	buffer_free(&xml);
-	return false;
-    }
-    if (!buffer_append_string(&xml, "</s:Envelope>"))
-    {
-	buffer_free(&response);
-	buffer_free(&xml);
-	return false;
+        buffer_free(&response);
+        buffer_free(&soap);
+        return false;
     }
 
-    log_debug("XML:");
-    log_debug("%s", buffer_data(&xml));
+    if (!buffer_append_string(&soap, "</s:Envelope>"))
+    {
+        buffer_free(&response);
+        buffer_free(&soap);
+        return false;
 
-    ok = http_post(
-            url,
-            "text/xml; charset=utf-8",
-            buffer_data(&xml),
-            buffer_length(&xml),
-            &response);
-    if (!ok)
-    {
-        log_error("Printer request failed");
-	buffer_free(&response);
-	buffer_free(&xml);
-    	return false;
     }
-    if (buffer_length(&response) > 0)
+
+    log_debug(
+        "========== BEGIN SOAP ==========\n"
+        "%s\n"
+        "=========== END SOAP ===========",
+        buffer_data(&soap));
+
+    ok = http_post(url, "text/xml; charset=utf-8", buffer_data(&soap), buffer_length(&soap), &response);
+
+    if (ok)
     {
-        log_debug("Printer response:");
-        log_debug("%s", buffer_data(&response));
+        log_debug("Printer response:\n%s", buffer_data(&response));
     }
 
     buffer_free(&response);
-    buffer_free(&xml);
+    buffer_free(&soap);
 
-    return true;
+    return ok;
 }
-
