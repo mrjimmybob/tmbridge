@@ -26,6 +26,7 @@ typedef struct
     int http_timeout;
     int epos_timeout;
     bool debug_xml;
+    bool debug_escpos;
 
 } config_t;
 
@@ -68,6 +69,7 @@ static void config_defaults(void)
     g_config.http_timeout = 20;
     g_config.epos_timeout = 10000;
     g_config.debug_xml = false;
+    g_config.debug_escpos = false;
 }
 
 /*****************************************************************************/
@@ -185,6 +187,10 @@ bool config_load(const char *filename)
 	{
 	    g_config.debug_xml = atoi(value) != 0;
 	}
+	else if (strcmp(key, "debug_escpos") == 0)
+	{
+	    g_config.debug_escpos = atoi(value) != 0;
+	}
         else
         {
             log_error("Unknown configuration key '%s'.", key);
@@ -258,3 +264,11 @@ bool config_get_debug_xml(void)
 {
     return g_config.debug_xml;
 }
+
+/*****************************************************************************/
+
+bool config_get_debug_escpos(void)
+{
+    return g_config.debug_escpos;
+}
+

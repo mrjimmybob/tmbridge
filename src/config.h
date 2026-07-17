@@ -4,6 +4,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define DEBUG_DIRECTORY "/var/log/tmbridge"
+
+
 bool        config_load(const char *filename);
 
 const char *config_get_listen_host(void);
@@ -17,6 +20,7 @@ const char *config_get_device(void);
 bool        config_get_verify_tls(void);
 int         config_get_http_timeout(void);
 int         config_get_epos_timeout(void);
-bool        config_get_debug_xml(void);
 
+bool        config_get_debug_xml(void);
+bool        config_get_debug_escpos(void);
 #endif
