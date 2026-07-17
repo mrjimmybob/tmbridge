@@ -1,0 +1,21 @@
+#ifndef CONFIG_H
+#define CONFIG_H
+
+#include <stdbool.h>
+#include <stdint.h>
+
+bool        config_load(const char *filename);
+
+const char *config_get_listen_host(void);
+uint16_t    config_get_listen_port(void);
+
+const char *config_get_printer_host(void);
+uint16_t    config_get_printer_port(void);
+
+const char *config_get_device(void);
+
+bool        config_get_verify_tls(void);
+int         config_get_timeout(void);
+bool        config_get_debug_xml(void);
+
+#endif
