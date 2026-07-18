@@ -1,0 +1,31 @@
+[Unit]
+Description=tmbridge ESC/POS to Epson ePOS Bridge
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+
+
+User=tmbridge
+Group=tmbridge
+
+WorkingDirectory=/opt/tmbridge
+
+ExecStart=/opt/tmbridge/tmbridge /etc/tmbridge/tmbridge.conf
+
+Restart=on-failure
+RestartSec=5
+
+# Automatically creates /var/log/tmbridge
+LogsDirectory=tmbridge
+
+# Security
+
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+ReadWritePaths=/var/log/tmbridge
+
+[Install]
+WantedBy=multi-user.target

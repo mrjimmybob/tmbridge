@@ -19,8 +19,20 @@
 #define TMBRIDGE_NAME    "tmbridge"
 #define TMBRIDGE_VERSION "0.1.0"
 
-int main(void)
+int main(int argc, char *argv[])
 {
+    const char *config = "/etc/tmbridge/tmbridge.conf";
+
+    if (argc > 1)
+    {
+        config = argv[1];
+    }
+
+    if (!config_load(config)) 
+    {
+        return EXIT_FAILURE;
+    }
+
     log_info("%s %s", TMBRIDGE_NAME, TMBRIDGE_VERSION);
 
     if (!config_load("tmbridge.conf")) 
