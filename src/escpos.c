@@ -84,50 +84,6 @@ static bool qr_store_data(escpos_state_t *state, const uint8_t *data, size_t len
 }
 
 
-static bool xml_escape(const char *text, buffer_t *out)
-{
-    while (*text)
-    {
-        switch (*text)
-        {
-            case '&':
-                if (!buffer_append_string(out, "&amp;"))
-                    return false;
-                break;
-
-            case '<':
-                if (!buffer_append_string(out, "&lt;"))
-                    return false;
-                break;
-
-            case '>':
-                if (!buffer_append_string(out, "&gt;"))
-                    return false;
-                break;
-
-            case '\'':
-                if (!buffer_append_string(out, "&apos;"))
-                    return false;
-                break;
-
-            case '"':
-                if (!buffer_append_string(out, "&quot;"))
-                    return false;
-                break;
-
-            default:
-                if (!buffer_append_char(out, *text))
-                    return false;
-                break;
-        }
-
-        text++;
-    }
-
-    return true;
-}
-
-
 static bool flush_text(escpos_state_t *state, bool newline)
 {
     if (buffer_length(&state->text) == 0 && !newline)
@@ -153,7 +109,11 @@ static bool flush_text(escpos_state_t *state, bool newline)
         return false;
     }
 
-    if (!xml_escape(buffer_data(&state->text), state->xml))
+    /* state->text already holds XML-escaped bytes (via xml_escape_char in
+       append_text_byte); copy verbatim, do not escape a second time. */
+    if (!buffer_append(state->xml,
+                       buffer_data(&state->text),
+                       buffer_length(&state->text)))
         return false;
 
     if (newline)
@@ -470,6 +430,28 @@ static const char *barcode_type(uint8_t type)
     }
 }
 
+/* CP437 (the ESC/POS default code page) high half, 0x80-0xFF, mapped to
+   Unicode code points. ESC/POS text bytes >= 0x80 are CP437, NOT Latin-1, so
+   they must be translated here before being emitted as XML numeric refs. */
+static const uint16_t cp437_high[128] = {
+    0x00C7, 0x00FC, 0x00E9, 0x00E2, 0x00E4, 0x00E0, 0x00E5, 0x00E7, /* 80 */
+    0x00EA, 0x00EB, 0x00E8, 0x00EF, 0x00EE, 0x00EC, 0x00C4, 0x00C5, /* 88 */
+    0x00C9, 0x00E6, 0x00C6, 0x00F4, 0x00F6, 0x00F2, 0x00FB, 0x00F9, /* 90 */
+    0x00FF, 0x00D6, 0x00DC, 0x00A2, 0x00A3, 0x00A5, 0x20A7, 0x0192, /* 98 */
+    0x00E1, 0x00ED, 0x00F3, 0x00FA, 0x00F1, 0x00D1, 0x00AA, 0x00BA, /* A0 */
+    0x00BF, 0x2310, 0x00AC, 0x00BD, 0x00BC, 0x00A1, 0x00AB, 0x00BB, /* A8 */
+    0x2591, 0x2592, 0x2593, 0x2502, 0x2524, 0x2561, 0x2562, 0x2556, /* B0 */
+    0x2555, 0x2563, 0x2551, 0x2557, 0x255D, 0x255C, 0x255B, 0x2510, /* B8 */
+    0x2514, 0x2534, 0x252C, 0x251C, 0x2500, 0x253C, 0x255E, 0x255F, /* C0 */
+    0x255A, 0x2554, 0x2569, 0x2566, 0x2560, 0x2550, 0x256C, 0x2567, /* C8 */
+    0x2568, 0x2564, 0x2565, 0x2559, 0x2558, 0x2552, 0x2553, 0x256B, /* D0 */
+    0x256A, 0x2518, 0x250C, 0x2588, 0x2584, 0x258C, 0x2590, 0x2580, /* D8 */
+    0x03B1, 0x00DF, 0x0393, 0x03C0, 0x03A3, 0x03C3, 0x00B5, 0x03C4, /* E0 */
+    0x03A6, 0x0398, 0x03A9, 0x03B4, 0x221E, 0x03C6, 0x03B5, 0x2229, /* E8 */
+    0x2261, 0x00B1, 0x2265, 0x2264, 0x2320, 0x2321, 0x00F7, 0x2248, /* F0 */
+    0x00B0, 0x2219, 0x00B7, 0x221A, 0x207F, 0x00B2, 0x25A0, 0x00A0  /* F8 */
+};
+
 static bool xml_escape_char(unsigned char c, buffer_t *out)
 {
     switch (c)
@@ -484,14 +466,22 @@ static bool xml_escape_char(unsigned char c, buffer_t *out)
             return buffer_append_string(out, "&apos;");
         case '"':
             return buffer_append_string(out, "&quot;");
+        case '\t':
+            return buffer_append_char(out, '\t');
         default:
             break;
     }
 
-    if (isprint(c))
+    /* Drop C0 control bytes (except the tab handled above): they are illegal
+       in XML 1.0 and would make the printer reject the whole job. */
+    if (c < 0x20)
+        return true;
+
+    if (c < 0x80)
         return buffer_append_char(out, (char)c);
 
-    return buffer_append_format(out, "&#%u;", (unsigned)c);
+    /* CP437 high half -> Unicode numeric character reference. */
+    return buffer_append_format(out, "&#%u;", (unsigned)cp437_high[c - 0x80]);
 }
 
 static size_t parse_barcode(escpos_state_t *state, const uint8_t *data, size_t length, size_t index)
@@ -500,22 +490,24 @@ static size_t parse_barcode(escpos_state_t *state, const uint8_t *data, size_t l
     size_t start;
     size_t barcode_length;
     const char *type;
+    uint8_t m;
 
+    /* index points at GS; layout is GS(0x1D) k(0x6B) m ...
+       so the barcode selector m is at index+2, not index+1. */
     if (!need(index, length, 3))
         return length;
 
-    type = barcode_type(data[index + 1]);
-
-    start = index + 2;
+    m = data[index + 2];
+    type = barcode_type(m);
 
     /* Newer ESC/POS: GS k m n d1...dn */
-    if (data[index + 1] >= 65)
+    if (m >= 65)
     {
         if (!need(index, length, 4))
             return length;
 
-        barcode_length = data[index + 2];
-        start = index + 3;
+        barcode_length = data[index + 3];
+        start = index + 4;
 
         if (!need(start, length, barcode_length))
             return length;
@@ -524,6 +516,7 @@ static size_t parse_barcode(escpos_state_t *state, const uint8_t *data, size_t l
     {
         /* Older ESC/POS: GS k m d1...dn NUL */
 
+        start = index + 3;
         i = start;
 
         while (i < length && data[i] != 0)
@@ -554,7 +547,7 @@ static size_t parse_barcode(escpos_state_t *state, const uint8_t *data, size_t l
     if (!buffer_append_string(state->xml, "</barcode>"))
         return length;
 
-    if (data[index + 1] >= 65)
+    if (m >= 65)
         return start + barcode_length;
 
     return start + barcode_length + 1;
@@ -602,6 +595,9 @@ static size_t parse_qr(escpos_state_t *state, const uint8_t *data, size_t length
     else if (cn == 49 && fn == 80)
     {
         /* Store QR data */
+        if (end < index + 8)
+            return end;
+
     	if (!qr_store_data(state, data + index + 8, end - (index + 8)))
 	{
             return length;

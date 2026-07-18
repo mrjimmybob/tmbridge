@@ -35,11 +35,6 @@ int main(int argc, char *argv[])
 
     log_info("%s %s", TMBRIDGE_NAME, TMBRIDGE_VERSION);
 
-    if (!config_load("tmbridge.conf")) 
-    {
-        return EXIT_FAILURE;
-    }
-
     if (!http_init()) {
         return EXIT_FAILURE;
     }
