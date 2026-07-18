@@ -53,3 +53,6 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+# Support transcript (contains printer/SSH credentials — keep out of the repo)
+epson-printer-problem.txt
