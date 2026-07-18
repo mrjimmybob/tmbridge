@@ -49,7 +49,6 @@ bool debug_dump_escpos(const buffer_t *escpos)
     }
 
     fp = fopen(filename, "wb");
-    log_debug("fopen=%p", (void *)fp);
 
     if (fp == NULL)
     {

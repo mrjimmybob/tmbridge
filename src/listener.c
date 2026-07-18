@@ -7,7 +7,6 @@
 #include "epos.h"
 #include "escpos.h"
 #include "log.h"
-#include "config.h"
 #include "debug.h"
 
 #include <arpa/inet.h>

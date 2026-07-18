@@ -173,6 +173,59 @@ static bool append_text_byte(escpos_state_t *state, uint8_t value)
     return xml_escape_char(value, &state->text);
 }
 
+/* Total byte length of fixed-length ESC commands we intentionally ignore, so
+   their parameter bytes are consumed rather than leaking into printed text.
+   Returns 0 for commands handled elsewhere or of unknown/variable length. */
+static size_t esc_param_length(uint8_t cmd)
+{
+    switch (cmd)
+    {
+        case 0x20:  /* ESC SP n  right-side character spacing        */
+        case 0x25:  /* ESC % n   select/cancel user-defined chars    */
+        case 0x33:  /* ESC 3 n   line spacing                        */
+        case 0x3D:  /* ESC = n   select peripheral device            */
+        case 0x4D:  /* ESC M n   select character font               */
+        case 0x52:  /* ESC R n   international character set          */
+        case 0x54:  /* ESC T n   print direction in page mode        */
+        case 0x56:  /* ESC V n   90-degree clockwise rotation        */
+        case 0x74:  /* ESC t n   select character code table         */
+        case 0x7B:  /* ESC { n   upside-down printing                */
+            return 3;
+
+        case 0x63:  /* ESC c 3/4/5 n  sensor / panel-button settings */
+            return 4;
+
+        default:
+            return 0;
+    }
+}
+
+/* As esc_param_length, but for fixed-length GS commands. */
+static size_t gs_param_length(uint8_t cmd)
+{
+    switch (cmd)
+    {
+        case 0x48:  /* GS H n   HRI character print position         */
+        case 0x49:  /* GS I n   transmit printer ID                  */
+        case 0x54:  /* GS T n   move to left-most print position     */
+        case 0x61:  /* GS a n   automatic status back                */
+        case 0x62:  /* GS b n   smoothing mode                       */
+        case 0x66:  /* GS f n   HRI character font                   */
+        case 0x68:  /* GS h n   barcode height                       */
+        case 0x72:  /* GS r n   transmit status                      */
+        case 0x77:  /* GS w n   barcode module width                 */
+            return 3;
+
+        case 0x4C:  /* GS L nL nH   left margin                      */
+        case 0x50:  /* GS P x y     basic calculated pitch           */
+        case 0x57:  /* GS W nL nH   print area width                 */
+            return 4;
+
+        default:
+            return 0;
+    }
+}
+
 static size_t parse_esc(escpos_state_t *state, const uint8_t *data, size_t length, size_t index)
 {
     uint8_t c;
@@ -259,14 +312,17 @@ static size_t parse_esc(escpos_state_t *state, const uint8_t *data, size_t lengt
         }
 
         case 0x64:      /* ESC d n */
+        {
+            char xmld[64];
+
             if (!need(index, length, 3))
                 return length;
-	    char xmld[64];
-	    snprintf(xmld, sizeof(xmld), "<feed line=\"%u\"/>", data[index + 2]);
-	    emit(state, xmld);
-            /* emit(state, "<feed line=\"1\"/>"); */
+
+            snprintf(xmld, sizeof(xmld), "<feed line=\"%u\"/>", data[index + 2]);
+            emit(state, xmld);
 
             return index + 3;
+        }
 
         case 0x4A:      /* ESC J n */
         {
@@ -288,7 +344,19 @@ static size_t parse_esc(escpos_state_t *state, const uint8_t *data, size_t lengt
             return length;
 
         default:
-            return index + 2;
+        {
+            /* Consume the full command (params included) when its length is
+               known, so parameter bytes never reach the text buffer. */
+            size_t skip = esc_param_length(c);
+
+            if (skip == 0)
+                skip = 2;
+
+            if (!need(index, length, skip))
+                return length;
+
+            return index + skip;
+        }
     }
 }
 
@@ -332,13 +400,15 @@ static size_t parse_gs(escpos_state_t *state, const uint8_t *data, size_t length
 
             return index + 3;
 
-        case 0x56:      /* GS V */
+        case 0x56:      /* GS V m [n]  cut */
             emit(state, "<cut type=\"feed\"/>");
 
             if (need(index, length, 3))
             {
-                if (data[index + 2] == 65 ||
-                    data[index + 2] == 66)
+                uint8_t m = data[index + 2];
+
+                /* Function B (feed then cut) carries an extra n parameter. */
+                if (m == 65 || m == 66 || m == 97 || m == 98)
                 {
                     if (need(index, length, 4))
                         return index + 4;
@@ -369,7 +439,18 @@ static size_t parse_gs(escpos_state_t *state, const uint8_t *data, size_t length
                     index);
             }
 
-            return index + 2;
+            /* Other GS ( fn commands are length-prefixed:
+               GS ( fn pL pH d1...dk, with k = pL + pH * 256. */
+            if (need(index, length, 5))
+            {
+                size_t k = (size_t)data[index + 3] +
+                           ((size_t)data[index + 4] << 8);
+
+                if (need(index + 5, length, k))
+                    return index + 5 + k;
+            }
+
+            return length;
 
         case 0x76:
             if (need(index, length, 3) &&
@@ -385,7 +466,17 @@ static size_t parse_gs(escpos_state_t *state, const uint8_t *data, size_t length
             return index + 2;
 
         default:
-            return index + 2;
+        {
+            size_t skip = gs_param_length(c);
+
+            if (skip == 0)
+                skip = 2;
+
+            if (!need(index, length, skip))
+                return length;
+
+            return index + skip;
+        }
     }
 }
 

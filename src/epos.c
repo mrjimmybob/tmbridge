@@ -102,17 +102,21 @@ bool epos_print(const buffer_t *xml)
 
     }
 
-    log_debug(
-        "========== BEGIN SOAP ==========\n"
-        "%s\n"
-        "=========== END SOAP ===========",
-        buffer_data(&soap));
+    if (config_get_debug_xml())
+    {
+        log_debug(
+            "========== BEGIN SOAP ==========\n"
+            "%s\n"
+            "=========== END SOAP ===========",
+            buffer_data(&soap));
+    }
 
     ok = http_post(url, "text/xml; charset=utf-8", buffer_data(&soap), buffer_length(&soap), &response);
 
     if (ok)
     {
-        log_debug("Printer response:\n%s", buffer_data(&response));
+        if (config_get_debug_xml())
+            log_debug("Printer response:\n%s", buffer_data(&response));
 
         /* The printer returns HTTP 200 even for failures (EX_TIMEOUT when
            busy, SchemaError on bad XML). Only success="true" in the SOAP body
