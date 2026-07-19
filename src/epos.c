@@ -57,9 +57,7 @@ bool epos_print(const buffer_t *xml)
         return false;
     }
 
-    if (!buffer_append_string(
-            &soap,
-            "<s:Body>"))
+    if (!buffer_append_string(&soap, "<s:Body>"))
     {
         buffer_free(&response);
         buffer_free(&soap);
@@ -115,16 +113,18 @@ bool epos_print(const buffer_t *xml)
 
     if (ok)
     {
-        if (config_get_debug_xml())
+        if (config_get_debug_xml()) {
             log_debug("Printer response:\n%s", buffer_data(&response));
+        }
 
         /* The printer returns HTTP 200 even for failures (EX_TIMEOUT when
            busy, SchemaError on bad XML). Only success="true" in the SOAP body
            means the job actually printed. */
         ok = strstr(buffer_data(&response), "success=\"true\"") != NULL;
 
-        if (!ok)
+        if (!ok) {
             log_error("Printer rejected job: %s", buffer_data(&response));
+        }
     }
 
     buffer_free(&response);
@@ -132,3 +132,4 @@ bool epos_print(const buffer_t *xml)
 
     return ok;
 }
+

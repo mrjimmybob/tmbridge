@@ -1,7 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
 
 #include "debug.h"
-
 #include "log.h"
 #include "config.h" 
 
@@ -69,3 +68,4 @@ bool debug_dump_escpos(const buffer_t *escpos)
 
     return true;
 }
+

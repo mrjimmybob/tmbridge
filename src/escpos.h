@@ -22,9 +22,7 @@
  *
  * The caller passes the resulting buffer to epos_print().
  */
-bool escpos_parse(
-    const void *data,
-    size_t length,
-    buffer_t *xml);
+
+bool escpos_parse(const void *data, size_t length, buffer_t *xml);
 
 #endif /* ESCPOS_H */

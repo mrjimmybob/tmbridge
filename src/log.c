@@ -14,9 +14,7 @@
 
 /*****************************************************************************/
 
-static void log_message(const char *level,
-                        const char *fmt,
-                        va_list args)
+static void log_message(const char *level, const char *fmt, va_list args)
 {
     time_t now;
     struct tm tm_now;
@@ -46,13 +44,9 @@ static void log_message(const char *level,
 
 void log_info(const char *fmt, ...)
 {
-
     va_list args;
-
     va_start(args, fmt);
-
     log_message("INFO", fmt, args);
-
     va_end(args);
 }
 
@@ -61,11 +55,8 @@ void log_info(const char *fmt, ...)
 void log_error(const char *fmt, ...)
 {
     va_list args;
-
     va_start(args, fmt);
-
     log_message("ERROR", fmt, args);
-
     va_end(args);
 }
 
@@ -74,11 +65,8 @@ void log_error(const char *fmt, ...)
 void log_debug(const char *fmt, ...)
 {
     va_list args;
-
     va_start(args, fmt);
-
     log_message("DEBUG", fmt, args);
-
     va_end(args);
 }
 
@@ -87,11 +75,8 @@ void log_debug(const char *fmt, ...)
 void log_warning(const char *fmt, ...)
 {
     va_list args;
-
     va_start(args, fmt);
-
     log_message("WARNING", fmt, args);
-
     va_end(args);
 }
 

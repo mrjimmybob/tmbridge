@@ -51,13 +51,11 @@ static const char *bool_string(bool value)
 static void reset_style(escpos_state_t *state)
 {
     state->align   = "left";
-
     state->em      = false;
     state->dw      = false;
     state->dh      = false;
     state->ul      = false;
     state->reverse = false;
-
     state->qr_size  = 3;
     state->qr_level = "default";
 }
@@ -77,7 +75,6 @@ static bool qr_store_data(escpos_state_t *state, const uint8_t *data, size_t len
     free(state->qr_data);
 
     state->qr_data = copy;
-
     state->qr_length = length;
 
     return true;
@@ -111,9 +108,7 @@ static bool flush_text(escpos_state_t *state, bool newline)
 
     /* state->text already holds XML-escaped bytes (via xml_escape_char in
        append_text_byte); copy verbatim, do not escape a second time. */
-    if (!buffer_append(state->xml,
-                       buffer_data(&state->text),
-                       buffer_length(&state->text)))
+    if (!buffer_append(state->xml, buffer_data(&state->text), buffer_length(&state->text)))
         return false;
 
     if (newline)
@@ -313,10 +308,10 @@ static size_t parse_esc(escpos_state_t *state, const uint8_t *data, size_t lengt
 
         case 0x64:      /* ESC d n */
         {
-            char xmld[64];
-
             if (!need(index, length, 3))
                 return length;
+
+            char xmld[64];
 
             snprintf(xmld, sizeof(xmld), "<feed line=\"%u\"/>", data[index + 2]);
             emit(state, xmld);
@@ -328,7 +323,9 @@ static size_t parse_esc(escpos_state_t *state, const uint8_t *data, size_t lengt
         {
             if (!need(index, length, 3))
                 return length;
-	    char xmlj[64];
+
+      	    char xmlj[64];
+
             snprintf(xmlj, sizeof(xmlj), "<feed unit=\"%u\"/>", data[index + 2]);
             emit(state, xmlj);
 
@@ -395,7 +392,6 @@ static size_t parse_gs(escpos_state_t *state, const uint8_t *data, size_t length
 
             flush_text(state, false);
 
-
             state->reverse = data[index + 2] != 0;
 
             return index + 3;
@@ -422,29 +418,19 @@ static size_t parse_gs(escpos_state_t *state, const uint8_t *data, size_t length
             return length;
 
         case 0x6B:
-            return parse_barcode(
-                state,
-                data,
-                length,
-                index);
+            return parse_barcode(state, data, length, index);
 
         case 0x28:
-            if (need(index, length, 3) &&
-                data[index + 2] == 0x6B)
+            if (need(index, length, 3) && data[index + 2] == 0x6B)
             {
-                return parse_qr(
-                    state,
-                    data,
-                    length,
-                    index);
+                return parse_qr(state, data, length, index);
             }
 
             /* Other GS ( fn commands are length-prefixed:
                GS ( fn pL pH d1...dk, with k = pL + pH * 256. */
             if (need(index, length, 5))
             {
-                size_t k = (size_t)data[index + 3] +
-                           ((size_t)data[index + 4] << 8);
+                size_t k = (size_t)data[index + 3] + ((size_t)data[index + 4] << 8);
 
                 if (need(index + 5, length, k))
                     return index + 5 + k;
@@ -453,14 +439,9 @@ static size_t parse_gs(escpos_state_t *state, const uint8_t *data, size_t length
             return length;
 
         case 0x76:
-            if (need(index, length, 3) &&
-                data[index + 2] == 0x30)
+            if (need(index, length, 3) && data[index + 2] == 0x30)
             {
-                return parse_raster(
-                    state,
-                    data,
-                    length,
-                    index);
+                return parse_raster(state, data, length, index);
             }
 
             return index + 2;
@@ -630,9 +611,9 @@ static size_t parse_barcode(escpos_state_t *state, const uint8_t *data, size_t l
     for (i = 0; i < barcode_length; i++)
     {
         if (!xml_escape_char(data[start + i], state->xml)) 
-	{
+      	{
             return length;
-	}
+      	}
     }
 
     if (!buffer_append_string(state->xml, "</barcode>"))
@@ -672,7 +653,6 @@ static size_t parse_qr(escpos_state_t *state, const uint8_t *data, size_t length
             state->qr_size = (unsigned)data[index + 7];
 
         if (state->qr_size < 1)
-
             state->qr_size = 1;
 
         if (state->qr_size > 8)
@@ -690,9 +670,9 @@ static size_t parse_qr(escpos_state_t *state, const uint8_t *data, size_t length
             return end;
 
     	if (!qr_store_data(state, data + index + 8, end - (index + 8)))
-	{
+    	{
             return length;
-	}
+    	}
     }   
     else if (cn == 49 && fn == 81)
     {
@@ -702,14 +682,13 @@ static size_t parse_qr(escpos_state_t *state, const uint8_t *data, size_t length
         {
             size_t i;
 
-            if (!buffer_append_format(
-                    state->xml,
-                    "<symbol "
-                    "type=\"qrcode_model_2\" "
-                    "level=\"%s\" "
-                    "width=\"%u\">",
-                    state->qr_level,
-                    state->qr_size))
+            if (!buffer_append_format(state->xml,
+                                      "<symbol "
+                                      "type=\"qrcode_model_2\" "
+                                      "level=\"%s\" "
+                                      "width=\"%u\">",
+                                      state->qr_level,
+                                      state->qr_size))
             {
                 return length;
             }
@@ -750,14 +729,9 @@ static size_t parse_raster(escpos_state_t *state, const uint8_t *data, size_t le
     if (!need(index, length, 8))
         return length;
 
-    width =
-        (uint16_t)data[index + 4] | ((uint16_t)data[index + 5] << 8);
-
+    width = (uint16_t)data[index + 4] | ((uint16_t)data[index + 5] << 8);
     height = (uint16_t)data[index + 6] | ((uint16_t)data[index + 7] << 8);
-
-
     nbytes = (size_t)width * (size_t)height;
-
     end = index + 8 + nbytes;
 
     if (end > length)
@@ -793,11 +767,11 @@ bool escpos_parse(const void *input, size_t length, buffer_t *xml)
         {
             case 0x0A:      /* LF */
                 if (!flush_text(&state, true))
-		{
-			buffer_free(&state.text);
-			free(state.qr_data);
-			return false;
-		}
+            		{
+            			buffer_free(&state.text);
+            			free(state.qr_data);
+            			return false;
+            		}
                 i++;
                 break;
 
@@ -810,11 +784,7 @@ bool escpos_parse(const void *input, size_t length, buffer_t *xml)
                 break;
 
             case 0x1D:      /* GS */
-                i = parse_gs(
-                        &state,
-                        data,
-                        length,
-                        i);
+                i = parse_gs(&state, data, length, i);
                 break;
 
             case 0x0C:      /* FF */
@@ -824,9 +794,9 @@ bool escpos_parse(const void *input, size_t length, buffer_t *xml)
             default:
                 if (!append_text_byte(&state, data[i]))
                 {
-		    buffer_free(&state.text);
-		    free(state.qr_data);
-                    return false;
+                  buffer_free(&state.text);
+                  free(state.qr_data);
+                  return false;
                 }
 
                 i++;
@@ -836,9 +806,9 @@ bool escpos_parse(const void *input, size_t length, buffer_t *xml)
 
     if (!flush_text(&state, false))
     {
-	buffer_free(&state.text);
-	free(state.qr_data);
-	return false;
+    	buffer_free(&state.text);
+    	free(state.qr_data);
+    	return false;
     }
 
     buffer_free(&state.text);
@@ -846,3 +816,4 @@ bool escpos_parse(const void *input, size_t length, buffer_t *xml)
 
     return true;
 }
+

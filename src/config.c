@@ -183,14 +183,14 @@ bool config_load(const char *filename)
         {
             g_config.epos_timeout = (int)strtol(value, NULL, 10);
         }
-	else if (strcmp(key, "debug_xml") == 0)
-	{
-	    g_config.debug_xml = atoi(value) != 0;
-	}
-	else if (strcmp(key, "debug_escpos") == 0)
-	{
-	    g_config.debug_escpos = atoi(value) != 0;
-	}
+      	else if (strcmp(key, "debug_xml") == 0)
+      	{
+      	    g_config.debug_xml = atoi(value) != 0;
+      	}
+      	else if (strcmp(key, "debug_escpos") == 0)
+      	{
+      	    g_config.debug_escpos = atoi(value) != 0;
+      	}
         else
         {
             log_error("Unknown configuration key '%s'.", key);

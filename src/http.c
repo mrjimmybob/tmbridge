@@ -105,6 +105,7 @@ bool http_post(const char *url, const char *content_type, const void *body, size
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, response);
     curl_easy_setopt(curl, CURLOPT_USERAGENT, "tmbridge/0.1");
+
     if (!config_get_verify_tls())
     {
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
@@ -121,7 +122,6 @@ bool http_post(const char *url, const char *content_type, const void *body, size
     }
 
     rc = curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status);
-
     if (rc != CURLE_OK)
     {
         log_error("Unable to obtain HTTP response code: %s", curl_easy_strerror(rc));
@@ -149,3 +149,4 @@ bool http_post(const char *url, const char *content_type, const void *body, size
     curl_easy_cleanup(curl);
     return true;
 }
+

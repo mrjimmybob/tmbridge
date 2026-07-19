@@ -23,4 +23,5 @@ int         config_get_epos_timeout(void);
 
 bool        config_get_debug_xml(void);
 bool        config_get_debug_escpos(void);
+
 #endif

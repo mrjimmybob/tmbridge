@@ -32,17 +32,18 @@ bool listener_start(void)
     struct sockaddr_in address;
     socklen_t address_length;
     int reuse = 1;
+
     struct timeval tv = {
     	.tv_sec = 1,
-	.tv_usec = 0
+    	.tv_usec = 0
     };
 
     server_fd = socket(AF_INET, SOCK_STREAM, 0);
 
     if (server_fd < 0)
     {
-        log_error("socket(): %s", strerror(errno));
-        return false;
+      log_error("socket(): %s", strerror(errno));
+      return false;
     }
 
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) != 0)
@@ -84,7 +85,6 @@ bool listener_start(void)
     for (;;)
     {
         address_length = sizeof(address);
-
         client_fd = accept(server_fd, (struct sockaddr *)&address, &address_length);
 
         if (client_fd < 0)
@@ -92,13 +92,12 @@ bool listener_start(void)
             log_warning("accept(): %s", strerror(errno));
             continue;
         }
-	if (setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) != 0)
-	{
-		log_warning("setsockopt(SO_RCVTIMEO): %s", strerror(errno));
-	}
+      	if (setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) != 0)
+      	{
+      		log_warning("setsockopt(SO_RCVTIMEO): %s", strerror(errno));
+      	}
 
         handle_client(client_fd);
-
         close(client_fd);
     }
 }
@@ -122,37 +121,34 @@ static bool handle_client(int client_fd)
     }
 
     for (;;)
-
     {
         bytes_read = recv(client_fd, temp, sizeof(temp), 0);
 
         if (bytes_read == 0)
             break;
 
-	if (bytes_read < 0)
-	{
-	    if (errno == EAGAIN || errno == EWOULDBLOCK)
-	    {
-	        log_debug("Receive timeout");
-	        break;
-	    }
+      	if (bytes_read < 0)
+      	{
+    	    if (errno == EAGAIN || errno == EWOULDBLOCK)
+    	    {
+  	        log_debug("Receive timeout");
+	          break;
+	        }
 
-	    log_warning("recv(): %s", strerror(errno));
+    	    log_warning("recv(): %s", strerror(errno));
 
-	    buffer_free(&escpos);
-	    buffer_free(&xml);
+    	    buffer_free(&escpos);
+    	    buffer_free(&xml);
 
-	    return false;
+    	    return false;
 
-	}
+        }
 
         if (!buffer_append(&escpos, temp, (size_t)bytes_read))
         {
             buffer_free(&escpos);
             buffer_free(&xml);
-
             return false;
-
         }
     }
 
@@ -182,11 +178,10 @@ static bool handle_client(int client_fd)
 
     if (config_get_debug_xml())
     {
-	log_debug(
-        	"========== BEGIN XML ==========\n"
-	        "%s\n"
-	        "=========== END XML ===========",
-	        buffer_data(&xml));
+    	log_debug("========== BEGIN XML ==========\n"
+      	        "%s\n"
+      	        "=========== END XML ===========",
+      	        buffer_data(&xml));
     }
 
     if (!epos_print(&xml))
@@ -199,3 +194,4 @@ static bool handle_client(int client_fd)
 
     return true;
 }
+

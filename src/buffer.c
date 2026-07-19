@@ -82,9 +82,7 @@ void buffer_clear(buffer_t *buffer)
 
 /*****************************************************************************/
 
-bool buffer_append(buffer_t *buffer,
-                   const void *data,
-                   size_t length)
+bool buffer_append(buffer_t *buffer, const void *data, size_t length)
 {
     if (!buffer_reserve(buffer, buffer->length + length + 1))
         return false;
@@ -100,29 +98,21 @@ bool buffer_append(buffer_t *buffer,
 
 /*****************************************************************************/
 
-bool buffer_append_string(buffer_t *buffer,
-                          const char *text)
+bool buffer_append_string(buffer_t *buffer, const char *text)
 {
-    return buffer_append(buffer,
-                         text,
-                         strlen(text));
+    return buffer_append(buffer, text, strlen(text));
 }
 
 /*****************************************************************************/
 
-bool buffer_append_char(buffer_t *buffer,
-                        char c)
+bool buffer_append_char(buffer_t *buffer, char c)
 {
-    return buffer_append(buffer,
-                         &c,
-                         1);
+    return buffer_append(buffer, &c, 1);
 }
 
 /*****************************************************************************/
 
-bool buffer_append_format(buffer_t *buffer,
-                   const char *fmt,
-                   ...)
+bool buffer_append_format(buffer_t *buffer, const char *fmt, ...)
 {
     va_list args;
     va_list copy;
@@ -139,26 +129,20 @@ bool buffer_append_format(buffer_t *buffer,
     if (required < 0)
     {
         va_end(args);
-
         return false;
     }
 
-    if (!buffer_reserve(buffer,
-                        buffer->length + (size_t)required + 1))
+    if (!buffer_reserve(buffer, buffer->length + (size_t)required + 1))
     {
         va_end(args);
         return false;
     }
 
-    vsnprintf(buffer->data + buffer->length,
-              buffer->capacity - buffer->length,
-              fmt,
-              args);
+    vsnprintf(buffer->data + buffer->length, buffer->capacity - buffer->length, fmt, args);
 
     va_end(args);
 
     buffer->length += (size_t)required;
-
 
     return true;
 }
@@ -177,3 +161,4 @@ size_t buffer_length(const buffer_t *buffer)
 {
     return buffer->length;
 }
+
